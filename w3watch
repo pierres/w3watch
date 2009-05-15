@@ -1,0 +1,50 @@
+#!/bin/bash
+
+mkdir -p ~/.w3watch/cache || exit 1
+
+if [ ! -f ~/.w3watch/urls ]; then
+	echo "~/.w3watch/urls not found!"
+	exit 1
+fi
+
+if [ -f ~/.w3watch/lock ]; then
+	echo "w3watch already running"
+	exit 1
+fi
+
+touch ~/.w3watch/lock || exit 1
+
+
+for i in $(cat ~/.w3watch/urls); do
+	dump=$(lynx -dump "$i")
+	if [ $? -ne 0 ]; then
+		rm -f ~/.w3watch/lock
+		exit 1
+	fi
+
+	sum=$(echo "$i" | sha1sum | awk '{print $1;}')
+	cachefile=~/.w3watch/cache/${sum}
+
+	if [ -f "$cachefile" ]; then
+		echo "$dump" | diff -u --label "$i" "$cachefile" -
+	fi
+
+	echo "$dump" > "$cachefile"
+done
+
+# remove old cache entries
+for i in ~/.w3watch/cache/*; do
+	sumi=$(basename "$i")
+
+	for j in $(cat ~/.w3watch/urls); do
+		sumj=$(echo "$j" | sha1sum | awk '{print $1;}')
+
+		if [ "$sumi" == "$sumj" ]; then
+			continue 2
+		fi
+	done
+
+	rm -f $i
+done
+
+rm -f touch ~/.w3watch/lock
