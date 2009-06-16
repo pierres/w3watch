@@ -63,7 +63,13 @@ while read line; do
 		url="${data[0]}"
 		filter="${data[@]:1}"
 
-		dump=$(lynx -dump "$url")
+		if echo "$url}" | grep -q '^@'; then
+			url="$(echo "${url}" | cut -c 1 --complement -)"
+			dump=$(lynx -source "$url")
+		else
+			dump=$(lynx -dump "$url")
+		fi
+
 		if [ $? -ne 0 ]; then
 			rm -f "${LOCKFILE}"
 			exit 1

@@ -4,6 +4,7 @@
 # * Every line contains one URL
 # * An optional filter can be defined by separating any command
 #   from the url using whitspaces
+# * Prepend an @ to the URL to work on bare HTML source
 #
 # Example:
 #
