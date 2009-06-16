@@ -1,50 +1,111 @@
 #!/bin/bash
 
-mkdir -p ~/.w3watch/cache || exit 1
+ROOTDIR="${HOME}/.w3watch"
+CACHEDIR="${ROOTDIR}/cache"
+LOCKFILE="${ROOTDIR}/lock"
+CONFIGFILE="${ROOTDIR}/config"
+CONFIGSAMPLE='/usr/share/doc/w3watch/config.sample'
 
-if [ ! -f ~/.w3watch/urls ]; then
-	echo "~/.w3watch/urls not found!"
+
+if [ ! -d "${ROOTDIR}" ]; then
+	install -D "${CONFIGSAMPLE}" "${CONFIGFILE}"
+	mkdir -p "${CACHEDIR}"
+	eval "${EDITOR} ${CONFIGFILE}"
+	exit $?
+fi
+
+if [ ! -r "${CONFIGFILE}" ]; then
+	echo "${CONFIGFILE} not found!"
 	exit 1
 fi
 
-if [ -f ~/.w3watch/lock ]; then
-	echo "w3watch already running"
+if [ ! -d "${CACHEDIR}" ]; then
+	mkdir -p "${CACHEDIR}"
+fi
+
+if [ -r "${LOCKFILE}" ]; then
+	echo "w3watch is locked by ${LOCKFILE}"
 	exit 1
 fi
 
-touch ~/.w3watch/lock || exit 1
+if [ "${1}" == "e" ]; then
+	eval "${EDITOR} ${CONFIGFILE}"
+	exit $?
+fi
 
+if [ "${1}" == "l" ]; then
+	cat "${CONFIGFILE}"
+	exit $?
+fi
 
-for i in $(cat ~/.w3watch/urls); do
-	dump=$(lynx -dump "$i")
-	if [ $? -ne 0 ]; then
-		rm -f ~/.w3watch/lock
-		exit 1
+if [ "${1}" == "d" ]; then
+	DUMP=true
+else
+	DUMP=false
+
+	if [ "${1}" != "c" ]; then
+		echo    "Usage: ${0} [e|l|d|c]"
+		echo -e "\te:\tedit config"
+		echo -e "\tl:\tlist config"
+		echo -e "\td:\tdump output and discard any changes"
+		echo -e "\tc:\tcheck for updates"
+		exit -1
 	fi
+fi
 
-	sum=$(echo "$i" | sha1sum | awk '{print $1;}')
-	cachefile=~/.w3watch/cache/${sum}
 
-	if [ -f "$cachefile" ]; then
-		echo "$dump" | diff -u --label "$i" "$cachefile" -
+touch "${LOCKFILE}"
+
+
+while read line; do
+	if  echo "${line}" | grep -q -v '^#'; then
+		data=(${line})
+		url="${data[0]}"
+		filter="${data[@]:1}"
+
+		dump=$(lynx -dump "$url")
+		if [ $? -ne 0 ]; then
+			rm -f "${LOCKFILE}"
+			exit 1
+		fi
+
+		if [ "${filter}" != "" ]; then
+			dump=$(echo "${dump}" | eval "${filter}")
+		fi
+
+		if $DUMP; then
+			echo "$dump"
+		else
+			sum=$(echo "${line}" | sha1sum | awk '{print $1;}')
+			cachefile="${CACHEDIR}/${sum}"
+
+			if [ -f "$cachefile" ]; then
+				echo "$dump" | diff -u \
+					--label "local copy from $(/usr/bin/stat --printf='%y' ${cachefile})" "$cachefile" \
+					--label "${url}" - \
+				|| echo
+			fi
+
+			echo "$dump" > "$cachefile"
+		fi
 	fi
-
-	echo "$dump" > "$cachefile"
-done
+done < "${CONFIGFILE}"
 
 # remove old cache entries
-for i in ~/.w3watch/cache/*; do
-	sumi=$(basename "$i")
+for cacheEntry in "${CACHEDIR}/"*; do
+	cacheSum=$(basename "$cacheEntry")
 
-	for j in $(cat ~/.w3watch/urls); do
-		sumj=$(echo "$j" | sha1sum | awk '{print $1;}')
+	while read configEntry; do
+		if  echo "${configEntry}" | grep -q -v '^#'; then
+			configSum=$(echo "$configEntry" | sha1sum | awk '{print $1;}')
 
-		if [ "$sumi" == "$sumj" ]; then
-			continue 2
+			if [ "$cacheSum" == "$configSum" ]; then
+				continue 2
+			fi
 		fi
-	done
+	done < "${CONFIGFILE}"
 
-	rm -f $i
+	rm -f $cacheEntry
 done
 
-rm -f touch ~/.w3watch/lock
+rm -f touch "${LOCKFILE}"

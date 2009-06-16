@@ -1,0 +1,19 @@
+# w3watch config file
+#
+# * Lines starting with a # will be ignored
+# * Every line contains one URL
+# * An optional filter can be defined by separating any command
+#   from the url using whitspaces
+#
+# Example:
+#
+# Watch a complete web page:
+#http://www.archlinux.org
+#
+# You are only interested in xorg related updates?
+# Pipe the page through a grep command.
+#http://www.archlinux.org	grep -i 'xorg'
+#
+# Note: You can use any command which accepts a website dump on stdin and 
+#       prints its filtered output to stdout
+#
