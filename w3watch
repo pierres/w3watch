@@ -6,6 +6,7 @@ CACHEDIR="${ROOTDIR}/cache"
 LOCKFILE="${ROOTDIR}/lock"
 CONFIGFILE="${ROOTDIR}/config"
 CONFIGSAMPLE='/usr/share/doc/w3watch/config.sample'
+LYNX='/usr/bin/lynx --connect_timeout 10 --read_timeout 10 -stderr'
 
 if [ ! -d "${ROOTDIR}" ]; then
 	install -D "${CONFIGSAMPLE}" "${CONFIGFILE}"
@@ -62,13 +63,13 @@ check() {
 
 			if echo "$url}" | grep -q '^@'; then
 				url="$(echo "${url}" | cut -c 1 --complement -)"
-				dump=$(lynx -source "$url")
+				dump=$($LYNX -source "$url")
 			else
-				dump=$(lynx -dump "$url")
+				dump=$($LYNX -dump "$url")
 			fi
 
 			if [ $? -ne 0 ]; then
-				quit 1
+				continue
 			fi
 
 			if [ "${filter}" != "" ]; then
