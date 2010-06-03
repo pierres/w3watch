@@ -55,59 +55,55 @@ list() {
 }
 
 check() {
-	while read line; do
-		if  echo "${line}" | grep -q -v '^#'; then
-			data=(${line})
-			url="${data[0]}"
-			filter="${data[@]:1}"
+	grep -v '^#' "${CONFIGFILE}" | while read line; do
+		data=(${line})
+		url="${data[0]}"
+		filter="${data[@]:1}"
 
-			if echo "$url}" | grep -q '^@'; then
-				url="$(echo "${url}" | cut -c 1 --complement -)"
-				dump=$($LYNX -source "$url")
-			else
-				dump=$($LYNX -dump "$url")
-			fi
-
-			if [ $? -ne 0 ]; then
-				continue
-			fi
-
-			if [ "${filter}" != "" ]; then
-				dump=$(echo "${dump}" | eval "${filter}")
-			fi
-
-			if $DRYRUN; then
-				echo "$dump"
-			else
-				sum=$(echo "${line}" | sha1sum | awk '{print $1;}')
-				cachefile="${CACHEDIR}/${sum}"
-
-				if [ -f "$cachefile" ]; then
-					echo "$dump" | diff -u \
-						--label "local copy from $(/usr/bin/stat --printf='%y' ${cachefile})" "$cachefile" \
-						--label "${url}" - \
-					|| echo
-				fi
-
-				echo "$dump" > "$cachefile"
-			fi
+		if echo "$url}" | grep -q '^@'; then
+			url="$(echo "${url}" | cut -c 1 --complement -)"
+			dump=$($LYNX -source "$url")
+		else
+			dump=$($LYNX -dump "$url")
 		fi
-	done < "${CONFIGFILE}"
+
+		if [ $? -ne 0 ]; then
+			continue
+		fi
+
+		if [ "${filter}" != "" ]; then
+			dump=$(echo "${dump}" | eval "${filter}")
+		fi
+
+		if $DRYRUN; then
+			echo "$dump"
+		else
+			sum=$(echo "${line}" | sha1sum | awk '{print $1;}')
+			cachefile="${CACHEDIR}/${sum}"
+
+			if [ -f "$cachefile" ]; then
+				echo "$dump" | diff -u \
+					--label "local copy from $(/usr/bin/stat --printf='%y' ${cachefile})" "$cachefile" \
+					--label "${url}" - \
+				|| echo
+			fi
+
+			echo "$dump" > "$cachefile"
+		fi
+	done
 }
 
 collectGarbage() {
 	for cacheEntry in "${CACHEDIR}/"*; do
 		cacheSum=$(basename "$cacheEntry")
 
-		while read configEntry; do
-			if  echo "${configEntry}" | grep -q -v '^#'; then
-				configSum=$(echo "$configEntry" | sha1sum | awk '{print $1;}')
+		grep -v '^#' "${CONFIGFILE}" | while read configEntry; do
+			configSum=$(echo "$configEntry" | sha1sum | awk '{print $1;}')
 
-				if [ "$cacheSum" == "$configSum" ]; then
-					continue 2
-				fi
+			if [ "$cacheSum" == "$configSum" ]; then
+				continue 2
 			fi
-		done < "${CONFIGFILE}"
+		done
 
 		rm -f $cacheEntry
 	done
