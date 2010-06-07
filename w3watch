@@ -101,11 +101,9 @@ collectGarbage() {
 			configSum=$(echo "$configEntry" | sha1sum | awk '{print $1;}')
 
 			if [ "$cacheSum" == "$configSum" ]; then
-				continue 2
+				return 1
 			fi
-		done
-
-		rm -f $cacheEntry
+		done && rm -f $cacheEntry
 	done
 }
 
