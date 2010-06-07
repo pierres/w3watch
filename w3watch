@@ -51,11 +51,11 @@ edit() {
 }
 
 list() {
-	grep -v '^#' "${CONFIGFILE}"
+	grep '^[^#]' "${CONFIGFILE}"
 }
 
 check() {
-	grep -v '^#' "${CONFIGFILE}" | while read line; do
+	grep '^[^#]' "${CONFIGFILE}" | while read line; do
 		data=(${line})
 		url="${data[0]}"
 		filter="${data[@]:1}"
@@ -97,7 +97,7 @@ collectGarbage() {
 	for cacheEntry in "${CACHEDIR}/"*; do
 		cacheSum=$(basename "$cacheEntry")
 
-		grep -v '^#' "${CONFIGFILE}" | while read configEntry; do
+		grep '^[^#]' "${CONFIGFILE}" | while read configEntry; do
 			configSum=$(echo "$configEntry" | sha1sum | awk '{print $1;}')
 
 			if [ "$cacheSum" == "$configSum" ]; then
