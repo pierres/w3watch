@@ -64,7 +64,7 @@ check() {
 			url="$(echo "${url}" | cut -c 1 --complement -)"
 			dump=$($LYNX -source "$url")
 		else
-			dump=$($LYNX -dump "$url")
+			dump=$($LYNX -dump -nonumbers "$url")
 		fi
 
 		if [ $? -ne 0 ]; then
