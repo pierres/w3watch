@@ -68,6 +68,7 @@ check() {
 		fi
 
 		if [ $? -ne 0 ]; then
+			echo "$url failed" >&2
 			continue
 		fi
 
